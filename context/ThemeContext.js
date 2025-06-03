@@ -6,26 +6,33 @@ import { Appearance } from 'react-native';
 export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [mode, setMode] = useState('light');
+  const [mode, setMode] = useState(null); // null to avoid rendering too early
   const [useDeviceSetting, setUseDeviceSetting] = useState(false);
 
+  // Load stored settings on mount
   useEffect(() => {
-    (async () => {
-      const storedMode = await SecureStore.getItemAsync('themeMode');
+    const loadStoredTheme = async () => {
       const storedUseDeviceSetting = await SecureStore.getItemAsync('useDeviceSetting');
+      const storedMode = await SecureStore.getItemAsync('themeMode');
+
       if (storedUseDeviceSetting === 'true') {
+        const deviceColorScheme = Appearance.getColorScheme();
+        setMode(deviceColorScheme === 'dark' ? 'dark' : 'light');
         setUseDeviceSetting(true);
-        const colorScheme = Appearance.getColorScheme();
-        setMode(colorScheme === 'dark' ? 'dark' : 'light');
-      } else if (storedMode && (storedMode === 'light' || storedMode === 'dark')) {
+      } else if (storedMode === 'dark' || storedMode === 'light') {
         setMode(storedMode);
         setUseDeviceSetting(false);
       } else {
-        setMode('light');
+        setMode('light'); // fallback default
         setUseDeviceSetting(false);
       }
-    })();
+    };
 
+    loadStoredTheme();
+  }, []);
+
+  // Device theme change listener
+  useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
       if (useDeviceSetting) {
         setMode(colorScheme === 'dark' ? 'dark' : 'light');
@@ -47,24 +54,30 @@ export const ThemeProvider = ({ children }) => {
     const newUseDeviceSetting = !useDeviceSetting;
     setUseDeviceSetting(newUseDeviceSetting);
     await SecureStore.setItemAsync('useDeviceSetting', newUseDeviceSetting ? 'true' : 'false');
+
     if (newUseDeviceSetting) {
-      const colorScheme = Appearance.getColorScheme();
-      setMode(colorScheme === 'dark' ? 'dark' : 'light');
+      const deviceColorScheme = Appearance.getColorScheme();
+      setMode(deviceColorScheme === 'dark' ? 'dark' : 'light');
     }
   };
 
-  const currentTheme = theme[mode] ?? theme['light'];
+  // Prevent children rendering until mode is determined
+  if (!mode) return null;
+
+  const currentTheme = theme[mode];
 
   return (
-    <ThemeContext.Provider value={{ 
-      theme: currentTheme, 
-      mode, 
-      toggleTheme, 
-      useDeviceSetting, 
-      toggleUseDeviceSetting, 
-      setUseDeviceSetting, 
-      setTheme: setMode 
-    }}>
+    <ThemeContext.Provider
+      value={{
+        theme: currentTheme,
+        mode,
+        toggleTheme,
+        useDeviceSetting,
+        toggleUseDeviceSetting,
+        setUseDeviceSetting,
+        setTheme: setMode,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

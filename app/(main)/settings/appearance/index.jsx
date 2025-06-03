@@ -1,8 +1,8 @@
 import { useTheme } from '@/context/ThemeContext';
+import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Image, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-
 
 const getStyles = (theme) =>
   StyleSheet.create({
@@ -14,28 +14,45 @@ const getStyles = (theme) =>
       paddingVertical: 20,
       paddingHorizontal: 16,
       justifyContent: 'center',
-      alignItems: 'flex-start',
+      alignItems: 'center',
+      borderRadius: 12,
     },
     title: {
       fontSize: 28,
       fontWeight: 'bold',
       color: '#fff',
+      marginBottom: 18,
     },
     description: {
-      fontSize: 16,
+      fontSize: 26,
       paddingHorizontal: 16,
       paddingVertical: 12,
       color: theme.colors.text,
+      fontWeight: '500',
+      textAlign: 'center',
+     paddingTop: 50
+
     },
     phoneContainer: {
       flexDirection: 'row',
       justifyContent: 'space-around',
       paddingHorizontal: 16,
+      paddingVertical: 30,
     },
     phoneBox: {
       width: '45%',
       borderWidth: 1,
       borderColor: '#ccc',
+      backgroundColor: "#3e3e3e",
+      borderRadius: 12,
+      padding: 12,
+      alignItems: 'center',
+    },
+    phoneBox1: {
+      width: '45%',
+      borderWidth: 1,
+      borderColor: '#ccc',
+      backgroundColor: "#e5e5e5",
       borderRadius: 12,
       padding: 12,
       alignItems: 'center',
@@ -67,12 +84,20 @@ const getStyles = (theme) =>
       borderColor: '#ccc',
     },
     selectedCircle: {
-      backgroundColor: '#007AFF',
+      backgroundColor: '#1a74eb',
       borderColor: '#007AFF',
     },
     deviceSettingBox: {
       marginTop: 20,
       paddingHorizontal: 16,
+      backgroundColor: "#e5e5e5",
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 1,
+        height: 2,
+      },
     },
     deviceSettingRow: {
       flexDirection: 'row',
@@ -91,25 +116,38 @@ const getStyles = (theme) =>
     },
   });
 
-const appLogo = require('@/assets/images/logo.png'); // Adjust path if needed
-const appLogo2 = require('@/assets/images/logo2.png'); // Adjust path if needed
+const appLogo = require('@/assets/images/logo.png');
+const appLogo2 = require('@/assets/images/logo2.png');
 
 const Appearance = () => {
-  const { theme, setTheme, useDeviceSetting, setUseDeviceSetting } = useTheme();
- const styles = getStyles(theme);
-  const toggleTheme = (selectedTheme) => {
-    setTheme(selectedTheme);
+  const {
+    theme,
+    setTheme,
+    useDeviceSetting,
+    setUseDeviceSetting,
+     toggleUseDeviceSetting,
+  } = useTheme();
+
+  const styles = getStyles(theme);
+
+  const handleThemeChange = async (selectedTheme) => {
+    await SecureStore.setItemAsync('useDeviceSetting', 'false');
+    await SecureStore.setItemAsync('themeMode', selectedTheme);
     setUseDeviceSetting(false);
+    setTheme(selectedTheme);
   };
 
-  const toggleUseDeviceSetting = () => {
-    setUseDeviceSetting(!useDeviceSetting);
-  };
+
+
+const toggleUseDeviceSettingHandler = async () => {
+  await toggleUseDeviceSetting(); // this handles theme and store update properly
+};
+
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
+        colors={theme.colors.blueGradient}
         style={styles.gradientBox}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -118,46 +156,45 @@ const Appearance = () => {
       </LinearGradient>
 
       <Text style={styles.description}>
-        Customize the look and feel of the app by selecting a theme below.
+       Appearance Display
       </Text>
 
       <View style={styles.phoneContainer}>
-        {/* Light Theme Box */}
-        <View style={styles.phoneBox}>
-          <Image source={appLogo} style={styles.logo} />
-          <View style={[styles.previewBox, { backgroundColor: '#fff' }]}>
+        {/* Light Theme */}
+        <View style={styles.phoneBox1}>
+          <Image source={appLogo2} style={styles.logo} />
+          <View style={[styles.previewBox, { backgroundColor: '#ffffff' }]}>
             <Text style={styles.previewLabel}>Light</Text>
             <TouchableOpacity
               style={[
                 styles.circle,
-                theme === 'light' && styles.selectedCircle,
+                theme.mode === 'light' && styles.selectedCircle,
               ]}
-              onPress={() => toggleTheme('light')}
+              onPress={() => handleThemeChange('light')}
             />
           </View>
         </View>
 
-        {/* Dark Theme Box */}
+        {/* Dark Theme */}
         <View style={styles.phoneBox}>
-          <Image source={appLogo2} style={styles.logo} />
+          <Image source={appLogo} style={styles.logo} />
           <View style={[styles.previewBox, { backgroundColor: '#000' }]}>
             <Text style={[styles.previewLabel, { color: '#fff' }]}>Dark</Text>
             <TouchableOpacity
               style={[
                 styles.circle,
-                theme === 'dark' && styles.selectedCircle,
+                theme.mode === 'dark' && styles.selectedCircle,
               ]}
-              onPress={() => toggleTheme('dark')}
+              onPress={() => handleThemeChange('dark')}
             />
           </View>
-          
         </View>
       </View>
 
       <View style={styles.deviceSettingBox}>
         <View style={styles.deviceSettingRow}>
           <Text style={styles.deviceSettingLabel}>Use device setting</Text>
-          <Switch value={useDeviceSetting} onValueChange={toggleUseDeviceSetting} />
+          <Switch value={useDeviceSetting} onValueChange={toggleUseDeviceSettingHandler} />
         </View>
         <Text style={styles.deviceSettingDescription}>
           When enabled, the app theme will follow your device's system settings.
@@ -166,6 +203,5 @@ const Appearance = () => {
     </View>
   );
 };
-
 
 export default Appearance;

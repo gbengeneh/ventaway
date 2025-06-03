@@ -1,21 +1,22 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-import {
-  Ionicons,
-  MaterialCommunityIcons,
-  FontAwesome5,
-} from '@expo/vector-icons';
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreeenWrapper from '@/components/ScreeenWrapper';
 import HomeHeader from '@/components/HomeHeader';
+import ScreeenWrapper from '@/components/ScreeenWrapper';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import {
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import React from 'react';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUser } from '@/context/UserContext';
 
 const tabs = [
   {
@@ -48,11 +49,10 @@ const tabs = [
   },
 ];
 
-// Mapping subtitle text based on route
 const subtitleMap = {
-  home: 'Welcome back!',
-  community: 'Chat with other users',
-  message: 'Check your messages',
+  home: 'How can we support you today?',
+  community: 'Welcome to the community, this is tailored to your interests',
+  message: 'Send and receive text or support from your persons',
 };
 
 export default function MainLayout() {
@@ -61,9 +61,11 @@ export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { userProfile } = useUser();
+  const userName = userProfile?.name || user?.name || 'User';
 
   const currentRoute = segments[segments.length - 1];
- const showHeader = !segments.includes('settings'); 
+  const showHeader = !segments.includes('settings') && !segments.includes('profile') && !segments.includes('post');
   const subtitle = subtitleMap[currentRoute] || 'How can we support you today?';
 
   const activeTab =
@@ -76,22 +78,20 @@ export default function MainLayout() {
   };
 
   return (
-    <ScreeenWrapper bg={theme.colors.background}>  
-      {/* Header (not shown in settings) */}
-      {showHeader && <HomeHeader user={user} subtitle={subtitle} />}
-
-      {/* Main content */}
-      <View style={styles.content}>
+    <ScreeenWrapper bg={theme.colors.background}>
+      {showHeader && <HomeHeader user={userProfile} subtitle={subtitle} />}
+      <View style={[styles.content]}>
         <Slot />
       </View>
 
-      {/* Bottom tab navigation */}
       <View
         style={[
           styles.tabBar,
           {
             height: 60 + insets.bottom,
             paddingBottom: insets.bottom,
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.grayLight,
           },
         ]}
       >
@@ -105,8 +105,19 @@ export default function MainLayout() {
               onPress={() => handleTabPress(tab)}
               activeOpacity={0.7}
             >
-              <Icon color={focused ? '#007AFF' : '#8e8e93'} size={24} />
-              <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>
+              <Icon
+                color={focused ? theme.colors.primary : theme.colors.textLight}
+                size={24}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: focused ? theme.colors.primary : theme.colors.textLight,
+                    fontWeight: focused ? theme.fonts.semibold : theme.fonts.medium,
+                  },
+                ]}
+              >
                 {tab.name}
               </Text>
             </TouchableOpacity>
@@ -120,13 +131,11 @@ export default function MainLayout() {
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    padding: 16,
+    padding: 1,
   },
   tabBar: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
   },
   tabItem: {
     flex: 1,
@@ -135,11 +144,6 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 12,
-    color: '#8e8e93',
     marginTop: 4,
-  },
-  tabLabelFocused: {
-    color: '#007AFF',
-    fontWeight: '600',
   },
 });

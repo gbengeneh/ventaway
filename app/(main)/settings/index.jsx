@@ -4,6 +4,56 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import { useTheme } from '@/context/ThemeContext';  
+
+
+const getStyles = (theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    gradientBox: {
+      paddingVertical: 20,
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 12,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    section: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    item: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    iconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+      backgroundColor: theme.colors.primary, // optional
+    },
+    itemLabel: {
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border ?? '#ddd',
+      marginTop: 8,
+    },
+  });
+
 const blueIconBg = '#007AFF';
 const lightBlueIconBg = '#5AC8FA';
 const redIconBg = '#FF3B30';
@@ -32,7 +82,8 @@ const settingsSections = [
 
 export default function Settings() {
   const router = useRouter();
-
+ const { theme } = useTheme();
+  const styles = getStyles(theme);
   const handlePress = (route) => {
     router.push(route);
   };
@@ -40,7 +91,7 @@ export default function Settings() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
+        colors={theme.colors.blueGradient}
         style={styles.gradientBox}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -68,46 +119,3 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  gradientBox: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  itemLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-    marginTop: 8,
-  },
-});

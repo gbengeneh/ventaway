@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.0.198:3005/auth';
+const API_BASE_URL = 'http://192.168.90.234:3005/auth';
 
 export const register = (registerDto) => {
   return axios.post(`${API_BASE_URL}/register`, registerDto);

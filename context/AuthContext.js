@@ -8,6 +8,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -17,13 +18,13 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Checking tokens from SecureStore...');
         const accessToken = await SecureStore.getItemAsync('accessToken');
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        const userId = await SecureStore.getItemAsync('userId');
 
-        if (accessToken) {
-          console.log('[Auth] Tokens found, dispatching setUser...');
-          dispatch(setUser({ accessToken, refreshToken }));
+        if (accessToken && refreshToken && userId) {
+          dispatch(setUser({ userId, accessToken, refreshToken }));
           setIsAuthenticated(true);
         } else {
-          console.log('[Auth] No tokens found.');
+          console.log('[Auth] Missing tokens or user ID.');
           dispatch(setUser(null));
           setIsAuthenticated(false);
         }
@@ -39,16 +40,19 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [dispatch]);
 
-  // Sync isAuthenticated with redux user changes (optional redundancy)
+  // Sync isAuthenticated with redux user changes
   useEffect(() => {
     setIsAuthenticated(!!user);
   }, [user]);
 
   const login = async (userData) => {
-    const { accessToken, refreshToken } = userData;
+    const { userId, accessToken, refreshToken } = userData;
+
+    console.log("Storing userId:", userId);
 
     await SecureStore.setItemAsync('accessToken', accessToken);
     await SecureStore.setItemAsync('refreshToken', refreshToken);
+    await SecureStore.setItemAsync('userId', userId);
 
     dispatch(setUser(userData));
     setIsAuthenticated(true);
@@ -57,6 +61,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
+    await SecureStore.deleteItemAsync('userId');
 
     dispatch(setUser(null));
     setIsAuthenticated(false);
@@ -65,6 +70,8 @@ export const AuthProvider = ({ children }) => {
   const clearAuthError = () => {
     dispatch(clearError());
   };
+
+  console.log('[Auth] AuthContext initialized with user:', user);
 
   return (
     <AuthContext.Provider

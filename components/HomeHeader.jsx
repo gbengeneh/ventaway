@@ -1,39 +1,53 @@
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '@react-navigation/native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+
 
 export default function HomeHeader({ user, subtitle }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme(); // ✅ Correct destructuring
+  const router = useRouter(); 
+
+  const onUserImagePress = () => {
+    router.push('profile');
+  };
 
   return (
-      <View style={styles.container}>
-        {/* Left: User info */}
-        <View style={styles.userSection}>
+    <View style={styles.container}>
+      {/* Left: User info */}
+      <View style={styles.userSection}>
+        <TouchableOpacity onPress={onUserImagePress}>
           <Image
             source={{ uri: user?.avatar || 'https://i.pravatar.cc/100' }}
             style={styles.avatar}
           />
-          <View>
-            <Text style={styles.greeting}>Hi, {user?.name || 'User'}</Text>
-            <Text style={styles.supportText}>{subtitle}</Text>
-          </View>
-        </View>
-
-        {/* Right: Icons */}
-        <View style={styles.iconSection}>
-          <TouchableOpacity style={[styles.iconButton, { borderColor: colors.primary }]}>
-            <Feather name="upload" size={20} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconButton, { borderColor: colors.primary }]}>
-            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
+        </TouchableOpacity>
+        <View>
+          <Text style={[styles.greeting, { color: theme.colors.text }]}>
+            Hi, {user?.username || 'User'}
+          </Text>
+          <Text style={[styles.supportText, { color: theme.colors.text }]}>
+            {subtitle}
+          </Text>
         </View>
       </View>
-   
+
+      {/* Right: Icons */}
+      <View style={styles.iconSection}>
+        <TouchableOpacity
+          style={[styles.iconButton, { borderColor: theme.colors.primary }]}
+          onPress={() => router.push('post/upload')}
+        >
+          <Feather name="upload" size={20} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.iconButton, { borderColor: theme.colors.primary }]}>
+          <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -55,12 +69,11 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: '#000', // gray-700
   },
   supportText: {
-    fontSize: 8,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
+    width: 150,
   },
   iconSection: {
     flexDirection: 'row',

@@ -29,12 +29,15 @@ export const login = createAsyncThunk(
       const response = await authApi.login(loginDto);
       const data = response.data;
 
-      // Save tokens securely
+      // Save tokens and userId securely
       if (data.accessToken) {
         await SecureStore.setItemAsync('accessToken', data.accessToken);
       }
       if (data.refreshToken) {
         await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+      }
+      if (data.userId) {
+        await SecureStore.setItemAsync('userId', data.userId);  // Save userId from root
       }
 
       return data;
@@ -43,6 +46,7 @@ export const login = createAsyncThunk(
     }
   }
 );
+
 
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
