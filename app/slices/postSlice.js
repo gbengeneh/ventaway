@@ -10,9 +10,9 @@ const initialState = {
 
 export const createPost = createAsyncThunk(
   'post/createPost',
-  async ({ dto, file, token }, { rejectWithValue }) => {
+  async ({ userId, dto, file, token }, { rejectWithValue }) => {
     try {
-      const data = await postApi.createPost(dto, file, token);
+      const data = await postApi.createPost(userId, dto, file, token);
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);

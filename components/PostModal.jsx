@@ -1,228 +1,517 @@
-import React, { useState, useEffect, useRef } from "react";
-import { View, Text, Button, Modal, Alert, StyleSheet } from "react-native";
-import { CameraView, useCameraPermissions, CameraType } from "expo-camera";
-import { Audio } from "expo-av";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  TextInput,
+  Alert,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Video, Audio as AudioPlayer } from "expo-av";
 import * as MediaLibrary from "expo-media-library";
-import * as DocumentPicker from "expo-document-picker";
+import { Audio } from "expo-av";
 
-export default function PostModal({
-  visible,
-  onClose,
-  onMediaSelected,
-  initialAction,
-}) {
-  const [modalVisible, setModalVisible] = useState(visible);
-  const [selectedAction, setSelectedAction] = useState(initialAction || null);
-  const [facing, setFacing] = useState(CameraType);
-  const cameraRef = useRef(null);
+const CustomImagePicker = ({ visible, onClose, onMediaSelected, initialAction }) => {
+  const [image, setImage] = useState(null);
+  const [videoPreviewUri, setVideoPreviewUri] = useState(null);
+  const [videoCaption, setVideoCaption] = useState("");
+  const [imageCaption, setImageCaption] = useState("");
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [audioRecording, setAudioRecording] = useState(null);
-  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
-
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-
-  useEffect(() => {
-    setModalVisible(visible);
-  }, [visible]);
+  const [audioUri, setAudioUri] = useState(null);
+  const [sound, setSound] = useState(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [showLibraryOption, setShowLibraryOption] = useState(false);
 
   useEffect(() => {
-    setSelectedAction(initialAction || null);
-  }, [initialAction]);
-
-  useEffect(() => {
-    if (modalVisible && selectedAction) {
-      if (selectedAction === "audio") {
-        startAudioRecording();
-      } else if (selectedAction === "video") {
-        startVideoRecording();
+    if (visible) {
+      if (initialAction === "photo") {
+        launchPhotoCamera();
+      } else if (initialAction === "video") {
+        launchVideoCamera();
+      } else if (initialAction === "audio") {
+        resetAudio();
+      } else {
+        // Show library option if no initialAction or unknown
+        setShowLibraryOption(true);
       }
+    } else {
+      setShowLibraryOption(false);
     }
-  }, [modalVisible, selectedAction]);
+  }, [visible, initialAction]);
 
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedAction(null);
-    onClose && onClose();
+  const launchPhotoCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission required", "Permission to access camera is required!");
+      onClose();
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setImage(asset.uri);
+      onMediaSelected && onMediaSelected({ type: "image", uri: asset.uri });
+    } else {
+      onClose();
+    }
   };
 
-  const toggleCameraFacing = () => {
-    setFacing((current) =>
-      current === CameraType.back ? CameraType.front : CameraType.back
-    );
+  const launchVideoCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission required", "Permission to access camera is required!");
+      onClose();
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setVideoPreviewUri(asset.uri);
+      onMediaSelected && onMediaSelected({ type: "video", uri: asset.uri });
+    } else {
+      onClose();
+    }
   };
-  // AUDIO
+
+  const pickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission required", "Permission to access media library is required!");
+      onClose();
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      if (asset.type === "image") {
+        setImage(asset.uri);
+        onMediaSelected && onMediaSelected({ type: "image", uri: asset.uri });
+      } else if (asset.type === "video") {
+        setVideoPreviewUri(asset.uri);
+        onMediaSelected && onMediaSelected({ type: "video", uri: asset.uri });
+      }
+      setShowLibraryOption(false);
+    } else {
+      onClose();
+    }
+  };
+
+  const resetAudio = () => {
+    if (sound) {
+      sound.unloadAsync();
+      setSound(null);
+    }
+    setAudioUri(null);
+    setIsRecordingAudio(false);
+    setAudioRecording(null);
+  };
+
   const startAudioRecording = async () => {
     try {
+      if (audioRecording) {
+        try {
+          await audioRecording.stopAndUnloadAsync();
+        } catch {}
+        setAudioRecording(null);
+        setIsRecordingAudio(false);
+      }
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission required", "Permission to access microphone is required!");
+        onClose();
+        return;
+      }
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
-      );
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await recording.startAsync();
       setAudioRecording(recording);
       setIsRecordingAudio(true);
-    } catch (err) {
-      console.error("Audio start error:", err);
+      setAudioUri(null);
+    } catch (error) {
+      console.error("Failed to start audio recording", error);
     }
   };
 
   const stopAudioRecording = async () => {
     try {
-      setIsRecordingAudio(false);
       await audioRecording.stopAndUnloadAsync();
       const uri = audioRecording.getURI();
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert("Audio saved!", uri);
-      onMediaSelected && onMediaSelected({ type: "audio", uri });
-      closeModal();
-    } catch (err) {
-      console.error("Audio stop error:", err);
+      setAudioUri(uri);
+      setIsRecordingAudio(false);
+      setAudioRecording(null);
+    } catch (error) {
+      console.error("Failed to stop audio recording", error);
     }
   };
 
-  // VIDEO
-  const startVideoRecording = async () => {
-    if (cameraRef.current) {
-      setIsRecordingVideo(true);
-      const video = await cameraRef.current.recordAsync();
-      await MediaLibrary.saveToLibraryAsync(video.uri);
-      Alert.alert("Video saved!", video.uri);
-      onMediaSelected && onMediaSelected({ type: "video", uri: video.uri });
-      setIsRecordingVideo(false);
-      closeModal();
-    }
-  };
-
-  const stopVideoRecording = () => {
-    if (cameraRef.current && isRecordingVideo) {
-      cameraRef.current.stopRecording();
-    }
-  };
-
-  // PHOTO
-  const takePicture = async () => {
-    if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      await MediaLibrary.saveToLibraryAsync(photo.uri);
-      Alert.alert("Picture saved!", photo.uri);
-      onMediaSelected && onMediaSelected({ type: "image", uri: photo.uri });
-      closeModal();
-    }
-  };
-
-  const pickFile = async () => {
+  const playAudio = async () => {
+    if (!audioUri) return;
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
+      const { sound: playbackObject } = await AudioPlayer.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true }
+      );
+      setSound(playbackObject);
+      setIsPlayingAudio(true);
+      playbackObject.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isPlaying) {
+          setIsPlayingAudio(false);
+          playbackObject.unloadAsync();
+          setSound(null);
+        }
       });
-      if (result.assets && result.assets.length > 0) {
-        Alert.alert("File Selected", result.assets[0].uri);
-        onMediaSelected &&
-          onMediaSelected({ type: "file", uri: result.assets[0].uri });
-        closeModal();
-      } else if (result.uri) {
-        Alert.alert("File Selected", result.uri);
-        onMediaSelected && onMediaSelected({ type: "file", uri: result.uri });
-        closeModal();
-      }
-    } catch (err) {
-      console.error("File pick error:", err);
+    } catch (error) {
+      console.error("Error playing audio", error);
     }
   };
 
-  const renderCameraView = (actionType) => (
-    <CameraView
-      style={styles.camera}
-      ref={cameraRef}
-      facing={facing}
-    >
-      <View style={styles.controls}>
-        {actionType === "video" ? (
-          isRecordingVideo ? (
-            <Button title="Stop Video" onPress={stopVideoRecording} />
-          ) : (
-            <Button title="Start Video" onPress={startVideoRecording} />
-          )
-        ) : (
-          <Button title="Take Picture" onPress={takePicture} />
-        )}
-        <Button title="Close" onPress={closeModal} />
-      </View>
-    </CameraView>
-  );
+  const stopAudio = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+      setSound(null);
+      setIsPlayingAudio(false);
+    }
+  };
+
+  const confirmAudio = async () => {
+    if (!audioUri) return;
+    try {
+      await MediaLibrary.saveToLibraryAsync(audioUri);
+      Alert.alert("Audio saved!", audioUri);
+      onMediaSelected && onMediaSelected({ type: "audio", uri: audioUri });
+      closeModal();
+    } catch (error) {
+      console.error("Failed to save audio", error);
+    }
+  };
+
+  const cancelAudio = () => {
+    resetAudio();
+    closeModal();
+  };
+
+  const closeModal = () => {
+    if (sound) {
+      sound.unloadAsync();
+      setSound(null);
+    }
+    setImage(null);
+    setVideoPreviewUri(null);
+    setImageCaption("");
+    setVideoCaption("");
+    setIsRecordingAudio(false);
+    setAudioRecording(null);
+    setAudioUri(null);
+    setIsPlayingAudio(false);
+    setShowLibraryOption(false);
+    onClose();
+  };
 
   const renderContent = () => {
-    if (
-      !cameraPermission?.granted &&
-      (selectedAction === "video" || selectedAction === "photo")
-    ) {
+    if (image) {
       return (
-        <View style={styles.inner}>
-          <Text>We need camera permission to continue</Text>
-          <Button title="Grant Permission" onPress={requestCameraPermission} />
+        <View style={styles.previewContainer}>
+          <Text style={styles.header}>🖼️ Preview Image</Text>
+          <Image source={{ uri: image }} style={styles.image} />
+
+          <Text style={styles.label}>Add a Caption (optional):</Text>
+          <TextInput
+            placeholder="Describe the image..."
+            value={imageCaption}
+            onChangeText={setImageCaption}
+            style={styles.captionInput}
+            multiline
+          />
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.confirmButton]}
+              onPress={async () => {
+                await MediaLibrary.saveToLibraryAsync(image);
+                onMediaSelected &&
+                  onMediaSelected({
+                    type: "image",
+                    uri: image,
+                    caption: imageCaption,
+                  });
+                closeModal();
+              }}
+            >
+              <Text style={styles.buttonText}>✅ Use Image</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => {
+                setImage(null);
+                closeModal();
+              }}
+            >
+              <Text style={styles.buttonText}>❌ Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
 
-    switch (selectedAction) {
-      case "audio":
-        return (
-          <View style={styles.inner}>
-            <Text>🎙️ Audio Recorder</Text>
-            {isRecordingAudio ? (
-              <Button title="Stop Recording" onPress={stopAudioRecording} />
-            ) : (
-              <Button title="Start Recording" onPress={startAudioRecording} />
-            )}
-            <Button title="Close" onPress={closeModal} />
+    if (videoPreviewUri) {
+      return (
+        <View style={styles.previewContainer}>
+          <Text style={styles.header}>🎬 Preview Your Video</Text>
+
+          <Video
+            source={{ uri: videoPreviewUri }}
+            useNativeControls
+            resizeMode="contain"
+            style={styles.video}
+            shouldPlay
+          />
+
+          <Text style={styles.label}>Add a Caption (optional):</Text>
+          <TextInput
+            placeholder="What's this video about?"
+            value={videoCaption}
+            onChangeText={setVideoCaption}
+            style={styles.captionInput}
+            multiline
+          />
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.confirmButton]}
+              onPress={async () => {
+                await MediaLibrary.saveToLibraryAsync(videoPreviewUri);
+                onMediaSelected &&
+                  onMediaSelected({
+                    type: "video",
+                    uri: videoPreviewUri,
+                    caption: videoCaption,
+                  });
+                closeModal();
+              }}
+            >
+              <Text style={styles.buttonText}>✅ Use Video</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.retakeButton]}
+              onPress={() => {
+                setVideoPreviewUri(null);
+                launchVideoCamera();
+              }}
+            >
+              <Text style={styles.buttonText}>🎥 Retake</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => {
+                setVideoPreviewUri(null);
+                closeModal();
+              }}
+            >
+              <Text style={styles.buttonText}>❌ Cancel</Text>
+            </TouchableOpacity>
           </View>
-        );
-      case "video":
-        return renderCameraView("video");
-      case "photo":
-        return renderCameraView("photo");
-      default:
-        return (
-          <View style={styles.inner}>
-            <Text>Select an option</Text>
-            <Button
-              title="Record Audio"
-              onPress={() => setSelectedAction("audio")}
-            />
-            <Button
-              title="Record Video"
-              onPress={() => setSelectedAction("video")}
-            />
-            <Button
-              title="Take Picture"
-              onPress={() => setSelectedAction("photo")}
-            />
-            <Button title="Select File" onPress={pickFile} />
-            <Button title="Close" onPress={closeModal} />
-          </View>
-        );
+        </View>
+      );
     }
+
+    if (isRecordingAudio) {
+      return (
+        <View style={styles.audioContainer}>
+          <Text style={styles.audioTitle}>🎙️ Audio Recorder</Text>
+          <TouchableOpacity onPress={stopAudioRecording} style={[styles.controlButton, styles.recordButton]}>
+            <Text style={{ fontSize: 64, color: "red" }}>■</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={closeModal} style={styles.controlButton}>
+            <Text style={{ fontSize: 36 }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (audioUri) {
+      return (
+        <View style={styles.previewContainer}>
+          <Text style={styles.header}>🎙️ Preview Audio</Text>
+          <TouchableOpacity onPress={isPlayingAudio ? stopAudio : playAudio} style={[styles.controlButton, styles.playButton]}>
+            <Text style={{ fontSize: 48 }}>{isPlayingAudio ? "⏸" : "▶️"}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.confirmButton]}
+              onPress={confirmAudio}
+            >
+              <Text style={styles.buttonText}>✅ Use Audio</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={cancelAudio}
+            >
+              <Text style={styles.buttonText}>❌ Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    if (showLibraryOption) {
+      return (
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity style={styles.optionButton} onPress={pickFromLibrary}>
+            <Text style={styles.optionText}>📁 Pick from Library</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionButton} onPress={closeModal}>
+            <Text style={styles.optionText}>❌ Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null; // No UI to show
   };
 
   return (
-    <Modal
-      visible={modalVisible}
-      animationType="slide"
-      onRequestClose={closeModal}
-    >
-      {renderContent()}
+    <Modal visible={visible} animationType="slide" transparent={true}>
+      <View style={styles.modalContainer}>{renderContent()}</View>
     </Modal>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  inner: { flex: 1, justifyContent: "center", alignItems: "center" },
-  camera: { flex: 1 },
-  controls: {
-    position: "absolute",
-    bottom: 30,
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 20,
+    justifyContent: "center",
+  },
+  previewContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  image: {
     width: "100%",
+    height: 300,
+    resizeMode: "contain",
+    borderRadius: 10,
+  },
+  video: {
+    width: "100%",
+    height: 300,
+    borderRadius: 10,
+  },
+  captionInput: {
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 10,
+    width: "100%",
+    minHeight: 60,
+    textAlignVertical: "top",
+    backgroundColor: "#f9f9f9",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 20,
+    alignSelf: "flex-start",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    width: "100%",
+  },
+  actionButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    padding: 12,
+    borderRadius: 10,
     alignItems: "center",
   },
+  confirmButton: {
+    backgroundColor: "#4CAF50",
+  },
+  retakeButton: {
+    backgroundColor: "#2196F3",
+  },
+  cancelButton: {
+    backgroundColor: "#F44336",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  audioContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  audioTitle: {
+    fontSize: 24,
+    marginBottom: 20,
+  },
+  controlButton: {
+    marginVertical: 10,
+  },
+  recordButton: {
+    marginBottom: 20,
+  },
+  playButton: {
+    marginVertical: 20,
+  },
+  optionsContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  optionButton: {
+    backgroundColor: "#2196F3",
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 10,
+    width: "100%",
+  },
+  optionText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+  },
 });
+
+export default CustomImagePicker;

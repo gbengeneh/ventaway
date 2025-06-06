@@ -14,6 +14,7 @@ const Login = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState(null);
 
   const loading = useSelector((state) => state.auth.loading);
   const error = useSelector((state) => state.auth.error);
@@ -22,6 +23,7 @@ const Login = () => {
     // Clear error when component unmounts or inputs change
     return () => {
       dispatch(clearError());
+      setLocalError(null);
     };
   }, [dispatch, email, password]);
 
@@ -30,6 +32,7 @@ const Login = () => {
       Alert.alert('Validation Error', 'Please enter both email and password');
       return;
     }
+    setLocalError(null);
     dispatch(login({ email, password }))
       .unwrap()
       .then(() => {
@@ -38,13 +41,15 @@ const Login = () => {
       .catch((err) => {
         // error handled by redux state in useEffect
         console.error('Login error caught in catch:', err);
+        setLocalError(err.message || 'Login failed');
       });
   };
 
   useEffect(() => {
-    if (error) {
-      if (typeof error === 'string') {
-        const lowerError = error.toLowerCase();
+    if (error || localError) {
+      const errMsg = error || localError;
+      if (typeof errMsg === 'string') {
+        const lowerError = errMsg.toLowerCase();
         if (
           lowerError.includes('invalid credentials') ||
           lowerError.includes('invalid email') ||
@@ -57,13 +62,13 @@ const Login = () => {
         } else if (lowerError.includes('account locked')) {
           Alert.alert('Account Locked', 'Your account has been locked. Please contact support.');
         } else {
-          Alert.alert('Error', error);
+          Alert.alert('Error', errMsg);
         }
       } else {
         Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       }
     }
-  }, [error]);
+  }, [error, localError]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>

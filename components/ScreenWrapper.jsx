@@ -2,7 +2,7 @@ import { View, Text } from 'react-native'
 import React from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const ScreeenWrapper = ( {children, bg}) => {
+const ScreenWrapper = ( {children, bg}) => {
     const {top} = useSafeAreaInsets();
     const paddingTop = top > 0 ? top + 5 : 0;
   return (
@@ -15,4 +15,4 @@ const ScreeenWrapper = ( {children, bg}) => {
   )
 }
 
-export default ScreeenWrapper
+export default ScreenWrapper

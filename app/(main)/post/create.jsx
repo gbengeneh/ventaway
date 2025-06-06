@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView, Alert, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import PostModal from '../../../components/PostModal';
 import { createPost } from '../../slices/postSlice';
+import { Video, Audio } from 'expo-av';
+import AudioPreview from '@/components/AudioPreview';
+import { useAuth } from '@/context/AuthContext';
+
+
 
 const postTypes = [
-  { id: 'video', label: 'Video', icon: 'video' },       // FontAwesome5 icon
-  { id: 'audio', label: 'Audio', icon: 'microphone' },  // FontAwesome5 icon
-  { id: 'image', label: 'Image', icon: 'image' },       // MaterialIcons icon
+  { id: 'video', label: 'Video', icon: 'video' },
+  { id: 'audio', label: 'Audio', icon: 'microphone' },
+  { id: 'image', label: 'Image', icon: 'image' },
 ];
 
 const mediaOptions = {
@@ -31,13 +36,16 @@ const mediaOptions = {
 
 export default function CreatePost() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
   const title = params.title || 'Create Post';
+  const communityId = params.communityId || null;
+  const userId = user?.userId || null;
 
   const dispatch = useDispatch();
   const postState = useSelector(state => state.post);
-  const token = useSelector(state => state.auth?.token); // Assuming auth token is stored here
+  const token = useSelector(state => state.auth?.token);
 
   const [text, setText] = useState('');
   const [selectedMediaType, setSelectedMediaType] = useState(null);
@@ -77,10 +85,20 @@ export default function CreatePost() {
       return;
     }
 
+    const content = typeof text === 'string' ? text.trim() : '';
+    if (content === '' && !mediaFile) {
+      Alert.alert('Error', 'Content is empty and no media selected.');
+      return;
+    }
+
     const dto = {
-      text: text.trim(),
-      type: mediaFile ? mediaFile.type : 'text',
+      content,
+      mediaType: mediaFile ? mediaFile.type : 'text',
+      mediaUrl: mediaFile ? mediaFile.uri : null,
+      communityId: communityId,
     };
+
+    console.log('Uploading post with dto:', dto);
 
     let file = null;
     if (mediaFile && mediaFile.uri) {
@@ -92,13 +110,15 @@ export default function CreatePost() {
     }
 
     try {
-      await dispatch(createPost({ dto, file, token })).unwrap();
+      console.log('Token used for upload:', token);
+      await dispatch(createPost({ userId, dto, file, token })).unwrap();
       Alert.alert('Success', 'Post uploaded successfully!');
       setText('');
       setMediaFile(null);
       router.back();
     } catch (error) {
-      Alert.alert('Upload Failed', error || 'An error occurred while uploading the post.');
+      console.error('Upload error:', error);
+      Alert.alert('Upload Failed', error.message || 'An error occurred while uploading the post.');
     }
   };
 
@@ -114,7 +134,7 @@ export default function CreatePost() {
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <TextInput
-          style={[styles.textArea, { color: theme.colors.text, borderColor: theme.colors.primary }]}
+          style={[styles.textArea, { color: theme.colors.text }]}
           placeholder="Write your post here..."
           placeholderTextColor={theme.colors.textLight}
           multiline
@@ -123,7 +143,27 @@ export default function CreatePost() {
           onChangeText={setText}
         />
 
-        <Text style={[styles.subtitle, { color: theme.colors.text }]}>Choose the type of post</Text>
+        {mediaFile && (
+          <View style={styles.mediaPreviewContainer}>
+            {mediaFile.type === 'image' && (
+              <Image source={{ uri: mediaFile.uri }} style={styles.mediaPreviewImage} />
+            )}
+            {mediaFile.type === 'video' && (
+              <Video
+                source={{ uri: mediaFile.uri }}
+                useNativeControls
+                resizeMode="contain"
+                style={styles.mediaPreviewVideo}
+                shouldPlay={false}
+              />
+            )}
+            {mediaFile.type === 'audio' && (
+              <AudioPreview audioUri={mediaFile.uri} />
+            )}
+          </View>
+        )}
+
+        <Text style={[styles.subtitle, { color: theme.colors.primary }]}>Choose media type</Text>
 
         <View style={styles.optionsRow}>
           {postTypes.map((type) => (
@@ -156,7 +196,6 @@ export default function CreatePost() {
           </View>
         )}
 
-        {/* Upload button at bottom */}
         <TouchableOpacity
           style={[styles.uploadButton, { backgroundColor: theme.colors.primary }]}
           onPress={handleUpload}
@@ -181,7 +220,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 8,
   },
   backButton: {
     width: 30,
@@ -198,13 +236,14 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   textArea: {
-    borderWidth: 1,
     borderRadius: 8,
     padding: 12,
     margin: 16,
     fontSize: 16,
     minHeight: 320,
     textAlignVertical: 'top',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
   },
   subtitle: {
     fontSize: 16,
@@ -259,5 +298,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  mediaPreviewContainer: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+  },
+  mediaPreviewVideo: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+  },
+  audioPreviewText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    padding: 10,
   },
 });

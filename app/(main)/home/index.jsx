@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  Dimensions,
-  ScrollView as RNScrollView,
-} from 'react-native';
-import { useTheme } from '../../../context/ThemeContext';
 import { Feather, Foundation } from '@expo/vector-icons';
-import ScreenWrapper from '../../../components/ScreeenWrapper';
+import React, { useEffect, useState } from 'react';
+import {
+    Dimensions,
+    FlatList,
+    ScrollView as RNScrollView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTheme } from '../../../context/ThemeContext';
 import { fetchCommunities } from '../../slices/communitySlice';
 
 const windowWidth = Dimensions.get('window').width;

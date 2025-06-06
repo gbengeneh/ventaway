@@ -29,7 +29,7 @@ export default function Upload() {
             margin: 5,
           },
         ]}
-        onPress={() => router.push({ pathname: 'post/create', params: { title: item.name } })}
+        onPress={() => router.push({ pathname: 'post/create', params: { title: item.name, communityId: item.id } })}
       >
         <Text style={[styles.optionText, { color: theme.colors.text }]}>{item.name}</Text>
       </TouchableOpacity>

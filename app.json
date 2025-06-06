@@ -27,9 +27,17 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(ventaway) to access your camera",
-          "microphonePermission": "Allow $(ventaway) to access your microphone",
+          "cameraPermission": "Allow $(appName) to access your camera",
+          "microphonePermission": "Allow $(appName) to access your microphone",
           "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ],
       "expo-router",
@@ -43,7 +51,6 @@
       ],
       "expo-secure-store"
     ],
-
     "experiments": {
       "typedRoutes": true
     }

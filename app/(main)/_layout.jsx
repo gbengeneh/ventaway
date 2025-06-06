@@ -1,7 +1,9 @@
 import HomeHeader from '@/components/HomeHeader';
-import ScreeenWrapper from '@/components/ScreeenWrapper';
+import ScreenWrapper from '@/components/ScreenWrapper';
+import ScreeenWrapper from '@/components/ScreenWrapper';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useUser } from '@/context/UserContext';
 import {
   FontAwesome5,
   Ionicons,
@@ -16,7 +18,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUser } from '@/context/UserContext';
 
 const tabs = [
   {
@@ -24,28 +25,28 @@ const tabs = [
     icon: ({ color, size }) => (
       <Ionicons name="home" size={size} color={color} />
     ),
-    route: '/(main)/home',
+    route: '/home',
   },
   {
     name: 'Community',
     icon: ({ color, size }) => (
       <MaterialCommunityIcons name="account-group" size={size} color={color} />
     ),
-    route: '/(main)/community',
+    route: '/community',
   },
   {
     name: 'Message',
     icon: ({ color, size }) => (
       <Ionicons name="chatbubble-ellipses" size={size} color={color} />
     ),
-    route: '/(main)/message',
+    route: '/message',
   },
   {
     name: 'Settings',
     icon: ({ color, size }) => (
       <FontAwesome5 name="cog" size={size} color={color} />
     ),
-    route: '/(main)/settings',
+    route: '/settings',
   },
 ];
 
@@ -78,7 +79,7 @@ export default function MainLayout() {
   };
 
   return (
-    <ScreeenWrapper bg={theme.colors.background}>
+    <ScreenWrapper bg={theme.colors.background}>
       {showHeader && <HomeHeader user={userProfile} subtitle={subtitle} />}
       <View style={[styles.content]}>
         <Slot />
@@ -124,7 +125,7 @@ export default function MainLayout() {
           );
         })}
       </View>
-    </ScreeenWrapper>
+    </ScreenWrapper>
   );
 }
 
